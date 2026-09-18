@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1B3A5C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Carteira">
+<title>Carteira Digital</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #d9d9d9;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1a1a1a;
+    overscroll-behavior: none;
+  }
+  #app {
+    max-width: 430px; margin: 0 auto; min-height: 100dvh;
+    background: #EFEFEF; box-shadow: 0 0 20px rgba(0,0,0,.1);
+    display: flex; flex-direction: column; position: relative;
+  }
+  .screen { display: none; flex-direction: column; min-height: 100dvh; flex: 1; }
+  .screen.active { display: flex; }
+
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #ffffff;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 1; transition: opacity .45s ease;
+  }
+  #splash.hide { opacity: 0; pointer-events: none; }
+  #splash .logo-wrap {
+    width: 180px; height: 180px;
+    display: flex; align-items: center; justify-content: center;
+    animation: splashIn .45s ease-out;
+  }
+  @keyframes splashIn {
+    0%   { opacity: 0; transform: scale(.85); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  #splash .logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+
+  .topbar {
+    height: 56px; display: flex; align-items: center; padding: 0 12px;
+    background: #fff; border-bottom: 1px solid #E5E5E5; position: sticky; top: 0; z-index: 20;
+  }
+  .topbar .side { width: 44px; display: flex; align-items: center; }
+  .topbar .side.left { justify-content: flex-start; }
+  .topbar .side.right { justify-content: flex-end; gap: 8px; }
+  .topbar h1 { flex: 1; text-align: center; font-size: 17px; font-weight: 500; margin: 0; }
+  .topbar button { background: none; border: none; padding: 6px; cursor: pointer; border-radius: 6px; }
+  .topbar button:active { background: #f0f0f0; }
+
+  .login-body { flex: 1; padding: 32px 20px 24px; display: flex; flex-direction: column; }
+  .brasao { display: flex; justify-content: center; margin-bottom: 32px; }
+  .brasao img { width: 120px; height: 120px; object-fit: contain; }
+  .login-body h2 { font-size: 26px; font-weight: 700; margin: 0; line-height: 1.2; }
+  .login-body .sub { margin-top: 8px; font-size: 15px; color: #5a5a5a; }
+  .input-wrap { margin-top: 20px; position: relative; }
+  .input-wrap input {
+    width: 100%; height: 48px; border-radius: 8px; border: 1px solid #D9D9D9;
+    background: #fff; padding: 0 16px; font-size: 15px; outline: none;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .input-wrap input:focus { border-color: #1B3A5C; }
+  .input-wrap input:disabled { background: #F7F7F7; color: #888; }
+  .forgot { margin-top: 12px; text-align: right; }
+  .forgot button { background: none; border: none; color: #1B3A5C; font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; }
+  .btn-primary {
+    margin-top: 24px; height: 48px; border-radius: 8px; border: none;
+    color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
+    background: #A9A9A9; transition: background .15s;
+  }
+  .btn-primary:not(:disabled) { background: #1B3A5C; }
+  .btn-primary:not(:disabled):active { background: #152C46; }
+  .btn-primary:disabled { cursor: not-allowed; }
+
+  .login-error {
+    margin-top: 16px; padding: 12px 14px; border-radius: 8px;
+    background: #FDECEC; border: 1px solid #F3B8B8;
+    color: #A02020; font-size: 14px; display: none;
+  }
+  .login-error.show { display: block; }
+
+  .login-footer {
+    margin-top: auto; padding-top: 40px;
+    display: flex; justify-content: space-between; padding-left: 16px; padding-right: 16px;
+  }
+  .login-footer button { background: none; border: none; color: #1B3A5C; font-size: 15px; font-weight: 600; cursor: pointer; padding: 0; }
+
+  .wallet-body { flex: 1; padding: 20px 16px 16px; }
+  .section-title { font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #6E6E6E; margin: 0 0 12px; }
+  .doc-card {
+    display: block; background: #fff; border-radius: 10px; border: 1px solid #E5E5E5;
+    padding: 16px; text-decoration: none; color: inherit; cursor: pointer;
+  }
+  .doc-card:active { background: #fafafa; }
+  .doc-card-inner { display: flex; align-items: center; gap: 12px; }
+  .doc-icon { width: 40px; height: 40px; border-radius: 50%; background: #F2F2F2;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .doc-info { flex: 1; min-width: 0; }
+  .doc-tipo { font-size: 14px; }
+  .doc-nome { font-size: 17px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-numero { font-size: 13px; color: #8A8A8A; margin-top: 2px; }
+  .btn-outline {
+    margin-top: 20px; width: 100%; height: 48px; border-radius: 10px;
+    border: 1px solid #1B3A5C; background: transparent; color: #1B3A5C;
+    font-weight: 600; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-outline:active { background: #EAF0F6; }
+
+  .bottom-nav {
+    position: sticky; bottom: 0; background: #fff;
+    border-top: 1px solid #E5E5E5; padding-bottom: env(safe-area-inset-bottom);
+    margin-top: auto;
+  }
+  .bottom-nav ul { display: flex; list-style: none; margin: 0; padding: 0; }
+  .bottom-nav li { flex: 1; }
+  .bottom-nav a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8px 0; gap: 4px; text-decoration: none; cursor: pointer;
+  }
+  .bottom-nav span { font-size: 11px; }
+
+  .tabs { display: flex; background: #fff; border-bottom: 1px solid #E5E5E5; }
+  .tabs button {
+    flex: 1; padding: 12px 0; font-size: 13px; letter-spacing: .5px;
+    position: relative; background: none; border: none; cursor: pointer;
+    color: #8A8A8A; font-weight: 400;
+  }
+  .tabs button.active { color: #1a1a1a; font-weight: 600; }
+  .tabs button.active::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+    height: 2px; background: #1B3A5C;
+  }
+
+  .panel-body { flex: 1; padding: 16px; }
+  .doc-viewer {
+    background: #fff; border-radius: 10px; border: 1px solid #E5E5E5;
+    aspect-ratio: 3 / 4.3; display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .doc-viewer img { width: 100%; height: 100%; object-fit: contain; }
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 0 24px; user-select: none; text-align: center;
+  }
+  .empty-state p {
+    font-size: 13px; letter-spacing: .5px; color: #B5B5B5;
+    font-weight: 500; margin: 0;
+  }
+
+  .qr-body { padding: 20px 16px; }
+  .qr-card { background: #fff; border-radius: 10px; border: 1px solid #E5E5E5; padding: 24px 20px 20px; }
+  .qr-card .canvas-wrap { display: flex; justify-content: center; }
+  .qr-progress { margin-top: 20px; height: 6px; border-radius: 3px; background: #E5E5E5; overflow: hidden; }
+  .qr-progress > div { height: 100%; background: #1B3A5C; transition: width 1s linear; }
+  .qr-time { margin-top: 16px; text-align: center; font-size: 16px; font-weight: 500; letter-spacing: 2px; }
+  .qr-updated { margin-top: 24px; text-align: center; font-size: 13px; color: #7A7A7A; }
+
+  .ctx-menu {
+    position: absolute; right: 12px; top: 48px; z-index: 30;
+    background: #fff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    border: 1px solid #E5E5E5; min-width: 190px; padding: 4px 0;
+    display: none;
+  }
+  .ctx-menu.open { display: block; }
+  .ctx-menu button {
+    display: block; width: 100%; text-align: left; padding: 12px 16px;
+    font-size: 15px; color: #1a1a1a; background: none; border: none; cursor: pointer;
+  }
+  .ctx-menu button:active { background: #F2F2F2; }
+
+  .spinner {
+    display: inline-block; width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin .7s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="logo-wrap">
+    <img id="splash-logo" alt="Brasão">
+  </div>
+</div>
+
+<div id="app">
+
+  <section class="screen" id="screen-login">
+    <header class="topbar">
+      <div class="side left"></div>
+      <h1>Entrar</h1>
+      <div class="side right"></div>
+    </header>
+
+    <div class="login-body">
+      <div class="brasao">
+        <img id="login-logo" alt="Brasão">
+      </div>
+
+      <h2>Acesse a sua conta</h2>
+      <p class="sub">Insira o seu código de acesso para entrar.</p>
+
+      <div class="input-wrap">
+        <input id="code" type="text" inputmode="text" placeholder="Digite seu código de acesso"
+               autocomplete="off" autocapitalize="characters" spellcheck="false">
+      </div>
+
+      <div class="forgot">
+        <button onclick="alert('Entre em contato com o administrador para recuperar seu código.')">Esqueci meu código</button>
+      </div>
+
+      <div class="login-error" id="login-error"></div>
+
+      <button class="btn-primary" id="btn-enter" onclick="doLogin()" disabled>Entrar</button>
+
+      <div class="login-footer">
+        <button onclick="alert('Ajuda')">Ajuda</button>
+        <button onclick="alert('Privacidade')">Privacidade</button>
+        <button onclick="alert('Termos')">Termos</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-wallet">
+    <header class="topbar">
+      <div class="side left"></div>
+      <h1>Carteira</h1>
+      <div class="side right"></div>
+    </header>
+
+    <div class="wallet-body">
+      <h2 class="section-title">VÁLIDAS</h2>
+
+      <a class="doc-card" onclick="go('doc'); setTab('frente')">
+        <div class="doc-card-inner">
+          <div class="doc-icon">
+            <svg width="22" height="22" viewBox="0 0 30 20">
+              <rect width="30" height="20" fill="#fff" stroke="#ddd"/>
+              <rect y="0" width="30" height="2.5" fill="#000"/>
+              <rect y="5" width="30" height="2.5" fill="#000"/>
+              <rect y="10" width="30" height="2.5" fill="#000"/>
+              <rect y="15" width="30" height="2.5" fill="#000"/>
+              <rect width="10" height="7" fill="#C8102E"/>
+              <circle cx="5" cy="3.5" r="1" fill="#fff"/>
+            </svg>
+          </div>
+          <div class="doc-info">
+            <div class="doc-tipo" id="card-tipo">RG - Registro Geral</div>
+            <div class="doc-nome" id="card-nome">—</div>
+            <div class="doc-numero" id="card-numero">Número: —</div>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M9 6l6 6-6 6" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </a>
+
+      <button class="btn-outline" onclick="alert('Função de adicionar carteira em breve.')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5v14M5 12h14" stroke="#1B3A5C" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        Adicionar carteira
+      </button>
+    </div>
+
+    <nav class="bottom-nav">
+      <ul>
+        <li><a onclick="go('wallet')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="6" width="18" height="13" rx="2" stroke="#1B3A5C" stroke-width="1.8"/>
+            <path d="M3 9h18" stroke="#1B3A5C" stroke-width="1.8"/>
+            <rect x="15" y="12" width="5" height="3" rx="0.8" fill="#1B3A5C"/>
+          </svg>
+          <span style="color:#1B3A5C">Carteira</span>
+        </a></li>
+        <li><a onclick="alert('Em breve')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M12.5 3.5l7 7a2 2 0 010 2.8l-6.2 6.2a2 2 0 01-2.8 0l-7-7V3.5h9z" stroke="#9A9A9A" stroke-width="1.8" stroke-linejoin="round"/>
+            <circle cx="7.5" cy="7.5" r="1.2" fill="#9A9A9A"/>
+          </svg>
+          <span style="color:#9A9A9A">Serviços</span>
+        </a></li>
+        <li><a onclick="alert('Em breve')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="#9A9A9A" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span style="color:#9A9A9A">Opções</span>
+        </a></li>
+      </ul>
+    </nav>
+  </section>
+
+  <section class="screen" id="screen-doc">
+    <div style="position:relative;">
+      <header class="topbar">
+        <div class="side left">
+          <button onclick="go('wallet')" aria-label="Voltar">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18l-6-6 6-6" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <h1>Carteira</h1>
+        <div class="side right">
+          <button onclick="doShare()" aria-label="Compartilhar">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <circle cx="18" cy="5" r="2.6" stroke="#1a1a1a" stroke-width="1.7"/>
+              <circle cx="6" cy="12" r="2.6" stroke="#1a1a1a" stroke-width="1.7"/>
+              <circle cx="18" cy="19" r="2.6" stroke="#1a1a1a" stroke-width="1.7"/>
+              <path d="M8.3 10.7l7.4-4.2M8.3 13.3l7.4 4.2" stroke="#1a1a1a" stroke-width="1.7"/>
+            </svg>
+          </button>
+          <button id="btn-menu" onclick="toggleMenu()" aria-label="Mais">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#1a1a1a">
+              <circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="ctx-menu" id="ctx-menu">
+        <button onclick="pickFile('front')">Carregar frente</button>
+        <button onclick="pickFile('back')">Carregar verso</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button data-tab="frente" onclick="setTab('frente')">FRENTE</button>
+      <button data-tab="verso" onclick="setTab('verso')">VERSO</button>
+      <button data-tab="qrcode" onclick="setTab('qrcode')">QR CODE</button>
+    </div>
+
+    <div class="panel-body" id="panel-frente" style="display:none;">
+      <div class="doc-viewer" id="viewer-front">
+        <div class="empty-state">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
+            <path d="M7 18a4.5 4.5 0 010-9 5.5 5.5 0 0110.7-1.4A4 4 0 0117 18H7z" stroke="#C6C6C6" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M12 11v6m0-6l-2 2m2-2l2 2" stroke="#C6C6C6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>TOQUE NO MENU PARA CARREGAR FRENTE</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-body" id="panel-verso" style="display:none;">
+      <div class="doc-viewer" id="viewer-back">
+        <div class="empty-state">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
+            <path d="M7 18a4.5 4.5 0 010-9 5.5 5.5 0 0110.7-1.4A4 4 0 0117 18H7z" stroke="#C6C6C6" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M12 11v6m0-6l-2 2m2-2l2 2" stroke="#C6C6C6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>TOQUE NO MENU PARA CARREGAR VERSO</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="qr-body" id="panel-qrcode" style="display:none;">
+      <div class="qr-card">
+        <div class="canvas-wrap">
+          <canvas id="qr-canvas" width="260" height="260"></canvas>
+        </div>
+        <div class="qr-progress"><div id="qr-bar" style="width:100%"></div></div>
+        <div class="qr-time" id="qr-time">01 : 00</div>
+      </div>
+      <p class="qr-updated" id="qr-updated">Última atualização em: --/--/-- - --:--</p>
+    </div>
+
+    <input type="file" id="file-input" accept="image/*" style="display:none;">
+
+    <nav class="bottom-nav">
+      <ul>
+        <li><a onclick="go('wallet')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="6" width="18" height="13" rx="2" stroke="#1B3A5C" stroke-width="1.8"/>
+            <path d="M3 9h18" stroke="#1B3A5C" stroke-width="1.8"/>
+            <rect x="15" y="12" width="5" height="3" rx="0.8" fill="#1B3A5C"/>
+          </svg>
+          <span style="color:#1B3A5C">Carteira</span>
+        </a></li>
+        <li><a onclick="alert('Em breve')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M12.5 3.5l7 7a2 2 0 010 2.8l-6.2 6.2a2 2 0 01-2.8 0l-7-7V3.5h9z" stroke="#9A9A9A" stroke-width="1.8" stroke-linejoin="round"/>
+            <circle cx="7.5" cy="7.5" r="1.2" fill="#9A9A9A"/>
+          </svg>
+          <span style="color:#9A9A9A">Serviços</span>
+        </a></li>
+        <li><a onclick="alert('Em breve')">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="#9A9A9A" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span style="color:#9A9A9A">Opções</span>
+        </a></li>
+      </ul>
+    </nav>
+  </section>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   🖼️  BRASÃO
+   Coloque "brasao.png" se o arquivo estiver na mesma pasta,
+   ou um link completo https://...
+   ═══════════════════════════════════════════════════════════════ */
+const BRASAO_URL = "brasao.png";
+
+/* ═══════════════════════════════════════════════════════════════
+   🔐  SUPABASE — cole as chaves do seu projeto
+   ═══════════════════════════════════════════════════════════════ */
+const SUPABASE_URL = "https://zwtrzhqslsucrtoutolx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_yBQvanestqkPkGlVVbzsyQ_xdj7arsh";
+const DEMO_CODE = "1234";
+
+/* ═══════════════════════════════════════════════════════════════
+   NÃO PRECISA MEXER DAQUI PARA BAIXO
+   ═══════════════════════════════════════════════════════════════ */
+
+function aplicarBrasao() {
+  const src = BRASAO_URL && BRASAO_URL.trim() ? BRASAO_URL : "";
+  const s = document.getElementById("splash-logo");
+  const l = document.getElementById("login-logo");
+  if (s && src) s.src = src;
+  if (l && src) l.src = src;
+}
+
+const state = { tab: 'frente', uploadTarget: null, qrTimer: null, qrSec: 60 };
+
+async function validarCodigo(codigo) {
+  const codigoLimpo = codigo.trim().toUpperCase();
+
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    if (codigoLimpo === DEMO_CODE) {
+      return { ok: true, nome: "Usuário Demo", numero: "00.000.000-0", tipo: "RG - Registro Geral", codigo: DEMO_CODE };
+    }
+    return { ok: false, motivo: "Código inválido (modo demonstração aceita apenas " + DEMO_CODE + ")." };
+  }
+
+  try {
+    const url = SUPABASE_URL + "/rest/v1/codigos?codigo=eq." + encodeURIComponent(codigoLimpo) + "&select=*";
+    const resp = await fetch(url, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    if (!resp.ok) return { ok: false, motivo: "Erro ao contatar o servidor." };
+    const lista = await resp.json();
+    if (!lista || lista.length === 0) return { ok: false, motivo: "Código não encontrado. Verifique e tente novamente." };
+    const reg = lista[0];
+    if (!reg.ativo) return { ok: false, motivo: "Este código foi bloqueado pelo administrador." };
+
+    fetch(SUPABASE_URL + "/rest/v1/codigos?id=eq." + reg.id, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({ ultimo_acesso: new Date().toISOString() })
+    }).catch(function(){});
+
+    return {
+      ok: true,
+      nome: reg.nome_usuario || "—",
+      numero: reg.numero_documento || "—",
+      tipo: reg.tipo_documento || "RG - Registro Geral",
+      codigo: reg.codigo
+    };
+  } catch (e) {
+    return { ok: false, motivo: "Sem conexão com o servidor. Verifique sua internet." };
+  }
+}
+
+/* Splash → Login — não depende da imagem carregar */
+window.addEventListener('load', function() {
+  aplicarBrasao();
+  const splash = document.getElementById('splash');
+  setTimeout(function() {
+    splash.classList.add('hide');
+    setTimeout(function() {
+      splash.style.display = 'none';
+      go('login');
+    }, 450);
+  }, 1000);
+});
+
+function go(name) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  const el = document.getElementById('screen-' + name);
+  if (el) el.classList.add('active');
+  window.scrollTo(0, 0);
+  if (name === 'doc') setTab(state.tab);
+  else stopQRTimer();
+}
+
+function aplicarDadosUsuario(dados) {
+  const t = document.getElementById('card-tipo');
+  const n = document.getElementById('card-nome');
+  const num = document.getElementById('card-numero');
+  if (t) t.textContent = dados.tipo || "RG - Registro Geral";
+  if (n) n.textContent = dados.nome || "—";
+  if (num) num.textContent = "Número: " + (dados.numero || "—");
+}
+
+const inputCode = document.getElementById('code');
+const btnEnter = document.getElementById('btn-enter');
+const errorBox = document.getElementById('login-error');
+
+inputCode.addEventListener('input', function() {
+  btnEnter.disabled = inputCode.value.trim().length === 0;
+  errorBox.classList.remove('show');
+});
+inputCode.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+
+async function doLogin() {
+  const codigo = inputCode.value.trim();
+  if (!codigo) return;
+
+  const textoOriginal = btnEnter.innerHTML;
+  btnEnter.disabled = true;
+  btnEnter.innerHTML = '<span class="spinner"></span>Verificando...';
+  errorBox.classList.remove('show');
+
+  const resultado = await validarCodigo(codigo);
+
+  if (resultado.ok) {
+    aplicarDadosUsuario(resultado);
+    inputCode.value = '';
+    btnEnter.innerHTML = textoOriginal;
+    btnEnter.disabled = true;
+    go('wallet');
+  } else {
+    errorBox.textContent = resultado.motivo || "Código inválido.";
+    errorBox.classList.add('show');
+    btnEnter.innerHTML = textoOriginal;
+    btnEnter.disabled = false;
+  }
+}
+
+function setTab(t) {
+  state.tab = t;
+  document.querySelectorAll('.tabs button').forEach(function(b){
+    b.classList.toggle('active', b.dataset.tab === t);
+  });
+  document.getElementById('panel-frente').style.display  = t === 'frente'  ? 'block' : 'none';
+  document.getElementById('panel-verso').style.display   = t === 'verso'   ? 'block' : 'none';
+  document.getElementById('panel-qrcode').style.display  = t === 'qrcode'  ? 'block' : 'none';
+  document.getElementById('btn-menu').style.display      = t === 'qrcode'  ? 'none'  : 'block';
+  closeMenu();
+  if (t === 'qrcode') startQRTimer();
+  else stopQRTimer();
+}
+
+function toggleMenu() {
+  const m = document.getElementById('ctx-menu');
+  m.classList.toggle('open');
+  if (state.tab === 'frente') {
+    m.children[0].style.display = 'block';
+    m.children[1].style.display = 'none';
+  } else if (state.tab === 'verso') {
+    m.children[0].style.display = 'none';
+    m.children[1].style.display = 'block';
+  }
+}
+function closeMenu() { document.getElementById('ctx-menu').classList.remove('open'); }
+document.addEventListener('click', function(e) {
+  const m = document.getElementById('ctx-menu');
+  const btn = document.getElementById('btn-menu');
+  if (m && btn && !m.contains(e.target) && !btn.contains(e.target)) closeMenu();
+});
+
+function pickFile(target) {
+  state.uploadTarget = target;
+  document.getElementById('file-input').click();
+  closeMenu();
+}
+
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const target = state.uploadTarget;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const dataUrl = ev.target.result;
+    try { localStorage.setItem('img:' + target, dataUrl); } catch(e){}
+    renderImage(target, dataUrl);
+  };
+  reader.readAsDataURL(file);
+});
+
+function renderImage(target, dataUrl) {
+  const viewer = document.getElementById('viewer-' + target);
+  if (!viewer) return;
+  viewer.innerHTML = '<img src="' + dataUrl + '" alt="">';
+}
+
+function drawQR(seed) {
+  const c = document.getElementById('qr-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const size = 260, cells = 25, cellSize = size / cells;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = '#000';
+  drawFinder(ctx, 0, 0, cellSize);
+  drawFinder(ctx, cells - 7, 0, cellSize);
+  drawFinder(ctx, 0, cells - 7, cellSize);
+  let s = 0;
+  for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+  const rnd = function(){ s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  for (let y = 0; y < cells; y++) {
+    for (let x = 0; x < cells; x++) {
+      if (inFinder(x, y, cells)) continue;
+      if (rnd() > 0.5) ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+    }
+  }
+}
+function drawFinder(ctx, x, y, cs) {
+  ctx.fillStyle = '#000'; ctx.fillRect(x * cs, y * cs, 7 * cs, 7 * cs);
+  ctx.fillStyle = '#fff'; ctx.fillRect((x + 1) * cs, (y + 1) * cs, 5 * cs, 5 * cs);
+  ctx.fillStyle = '#000'; ctx.fillRect((x + 2) * cs, (y + 2) * cs, 3 * cs, 3 * cs);
+}
+function inFinder(x, y, cells) {
+  return (x < 7 && y < 7) || (x >= cells - 7 && y < 7) || (x < 7 && y >= cells - 7);
+}
+function regenerateQR() {
+  const seed = Date.now() + '-' + Math.random().toString(36).slice(2);
+  drawQR(seed);
+  state.qrSec = 60;
+  updateQRTime();
+  const d = new Date();
+  const pad = function(n){ return String(n).padStart(2, '0'); };
+  const el = document.getElementById('qr-updated');
+  if (el) {
+    el.textContent = 'Última atualização em: ' +
+      pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(-2) +
+      ' - ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+}
+function updateQRTime() {
+  const mm = String(Math.floor(state.qrSec / 60)).padStart(2, '0');
+  const ss = String(state.qrSec % 60).padStart(2, '0');
+  const timeEl = document.getElementById('qr-time');
+  const barEl = document.getElementById('qr-bar');
+  if (timeEl) timeEl.textContent = mm + ' : ' + ss;
+  if (barEl) barEl.style.width = (state.qrSec / 60 * 100) + '%';
+}
+function startQRTimer() {
+  if (state.qrTimer) return;
+  regenerateQR();
+  state.qrTimer = setInterval(function() {
+    state.qrSec--;
+    if (state.qrSec <= 0) { regenerateQR(); return; }
+    updateQRTime();
+  }, 1000);
+}
+function stopQRTimer() {
+  if (state.qrTimer) { clearInterval(state.qrTimer); state.qrTimer = null; }
+}
+
+async function doShare() {
+  const data = { title: 'Carteira Digital', text: 'Compartilhamento', url: location.href };
+  if (navigator.share) {
+    try { await navigator.share(data); return; } catch (_) {}
+  }
+  if (navigator.clipboard) {
+    try { await navigator.clipboard.writeText(location.href); alert('Link copiado!'); return; } catch (_) {}
+  }
+  alert('Compartilhamento não suportado neste navegador.');
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  try {
+    const f = localStorage.getItem('img:front');
+    const b = localStorage.getItem('img:back');
+    if (f) renderImage('front', f);
+    if (b) renderImage('back', b);
+  } catch(e) {}
+});
+</script>
+</body>
+</html>
