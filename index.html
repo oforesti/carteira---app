@@ -71,8 +71,9 @@
   }
   .input-wrap input:focus { border-color: #1B3A5C; }
   .input-wrap input:disabled { background: #F7F7F7; color: #888; }
-  .forgot { margin-top: 12px; text-align: right; }
+  .forgot { margin-top: 12px; text-align: right; display: flex; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
   .forgot button { background: none; border: none; color: #1B3A5C; font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; }
+  .forgot .limpar { color: #8A8A8A; font-weight: 500; }
   .btn-primary {
     margin-top: 24px; height: 48px; border-radius: 8px; border: none;
     color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
@@ -88,6 +89,25 @@
     color: #A02020; font-size: 14px; display: none;
   }
   .login-error.show { display: block; }
+
+  /* Caixinha "salvar senha" */
+  .salvar-box {
+    margin-top: 16px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: #EAF0F6;
+    border: 1px solid #C5D5E5;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1B3A5C;
+    cursor: pointer;
+    user-select: none;
+  }
+  .salvar-box.show { display: flex; }
+  .salvar-box input { width: 18px; height: 18px; accent-color: #1B3A5C; cursor: pointer; flex-shrink: 0; }
+  .salvar-box label { cursor: pointer; flex: 1; }
 
   .login-footer {
     margin-top: auto; padding-top: 40px;
@@ -219,10 +239,17 @@
       </div>
 
       <div class="forgot">
+        <button class="limpar" id="btn-esquecer" onclick="esquecerCodigoSalvo()" style="display:none;">Esquecer código salvo</button>
         <button onclick="alert('Entre em contato com o administrador para recuperar seu código.')">Esqueci meu código</button>
       </div>
 
       <div class="login-error" id="login-error"></div>
+
+      <!-- Caixinha "salvar senha" aparece após login válido -->
+      <label class="salvar-box" id="salvar-box">
+        <input type="checkbox" id="chk-salvar" checked>
+        <span>Salvar código para entrar mais rápido</span>
+      </label>
 
       <button class="btn-primary" id="btn-enter" onclick="doLogin()" disabled>Entrar</button>
 
@@ -412,17 +439,20 @@
 <script>
 /* ═══════════════════════════════════════════════════════════════
    🖼️  BRASÃO
-   Coloque "brasao.png" se o arquivo estiver na mesma pasta,
-   ou um link completo https://...
    ═══════════════════════════════════════════════════════════════ */
 const BRASAO_URL = "brasao.png";
 
 /* ═══════════════════════════════════════════════════════════════
-   🔐  SUPABASE — cole as chaves do seu projeto
+   🔐  SUPABASE
    ═══════════════════════════════════════════════════════════════ */
 const SUPABASE_URL = "https://zwtrzhqslsucrtoutolx.supabase.co";
 const SUPABASE_KEY = "sb_publishable_yBQvanestqkPkGlVVbzsyQ_xdj7arsh";
 const DEMO_CODE = "1234";
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAVE DO CÓDIGO SALVO (não mexer)
+   ═══════════════════════════════════════════════════════════════ */
+const STORAGE_CODIGO_SALVO = "carteira:codigo_salvo";
 
 /* ═══════════════════════════════════════════════════════════════
    NÃO PRECISA MEXER DAQUI PARA BAIXO
@@ -438,6 +468,33 @@ function aplicarBrasao() {
 
 const state = { tab: 'frente', uploadTarget: null, qrTimer: null, qrSec: 60 };
 
+/* ═══════ Gerenciamento do código salvo ═══════ */
+function lerCodigoSalvo() {
+  try { return localStorage.getItem(STORAGE_CODIGO_SALVO) || ""; } catch(e){ return ""; }
+}
+function salvarCodigo(codigo) {
+  try { localStorage.setItem(STORAGE_CODIGO_SALVO, codigo); } catch(e){}
+}
+function apagarCodigoSalvo() {
+  try { localStorage.removeItem(STORAGE_CODIGO_SALVO); } catch(e){}
+}
+
+function atualizarBotaoEsquecer() {
+  const btn = document.getElementById("btn-esquecer");
+  if (!btn) return;
+  btn.style.display = lerCodigoSalvo() ? "inline-block" : "none";
+}
+
+function esquecerCodigoSalvo() {
+  if (!confirm("Remover o código salvo? Você vai precisar digitá-lo novamente na próxima vez.")) return;
+  apagarCodigoSalvo();
+  inputCode.value = "";
+  btnEnter.disabled = true;
+  atualizarBotaoEsquecer();
+  alert("Código removido.");
+}
+
+/* ═══════ Validação de código ═══════ */
 async function validarCodigo(codigo) {
   const codigoLimpo = codigo.trim().toUpperCase();
 
@@ -485,6 +542,15 @@ async function validarCodigo(codigo) {
 /* Splash → Login — não depende da imagem carregar */
 window.addEventListener('load', function() {
   aplicarBrasao();
+
+  // Restaura código salvo ANTES de mostrar o login
+  const salvo = lerCodigoSalvo();
+  if (salvo) {
+    inputCode.value = salvo;
+    btnEnter.disabled = false;
+  }
+  atualizarBotaoEsquecer();
+
   const splash = document.getElementById('splash');
   setTimeout(function() {
     splash.classList.add('hide');
@@ -516,6 +582,8 @@ function aplicarDadosUsuario(dados) {
 const inputCode = document.getElementById('code');
 const btnEnter = document.getElementById('btn-enter');
 const errorBox = document.getElementById('login-error');
+const salvarBox = document.getElementById('salvar-box');
+const chkSalvar = document.getElementById('chk-salvar');
 
 inputCode.addEventListener('input', function() {
   btnEnter.disabled = inputCode.value.trim().length === 0;
@@ -533,10 +601,19 @@ async function doLogin() {
   btnEnter.disabled = true;
   btnEnter.innerHTML = '<span class="spinner"></span>Verificando...';
   errorBox.classList.remove('show');
+  salvarBox.classList.remove('show');
 
   const resultado = await validarCodigo(codigo);
 
   if (resultado.ok) {
+    // Decide se salva o código
+    if (chkSalvar.checked) {
+      salvarCodigo(codigo.toUpperCase());
+    } else {
+      apagarCodigoSalvo();
+    }
+    atualizarBotaoEsquecer();
+
     aplicarDadosUsuario(resultado);
     inputCode.value = '';
     btnEnter.innerHTML = textoOriginal;
@@ -547,6 +624,8 @@ async function doLogin() {
     errorBox.classList.add('show');
     btnEnter.innerHTML = textoOriginal;
     btnEnter.disabled = false;
+    // Se falhou, mostra a caixinha pra ele poder escolher não salvar (caso tenha errado)
+    salvarBox.classList.add('show');
   }
 }
 
@@ -690,14 +769,6 @@ window.addEventListener('DOMContentLoaded', function() {
     if (b) renderImage('back', b);
   } catch(e) {}
 });
-/* Registrar Service Worker para PWA */
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js').catch(function(e) {
-      console.log('SW falhou:', e);
-    });
-  });
-}
 </script>
 </body>
 </html>
